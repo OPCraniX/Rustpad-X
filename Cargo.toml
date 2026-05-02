@@ -1,0 +1,10 @@
+[package]
+name = "Rustpad-X"
+version = "1.0.0"
+edition = "2024"
+
+[[bin]]
+name = "Rustpad-X"
+path = "src/main.rs"
+
+[dependencies]

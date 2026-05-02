@@ -1,0 +1,78 @@
+Rustpad-X Help
+==============
+
+Rustpad-X is a native Windows text/code editor with tabs, project opening, search, replace, comparison, line numbers, folding, themes, and session restore.
+
+Common Commands
+---------------
+
+File:
+- Ctrl+T: Open a new tab
+- Ctrl+O: Open a file
+- Ctrl+W: Open a project folder
+- Ctrl+Shift+T: Close the current tab
+- Ctrl+S: Save
+- Ctrl+Shift+S: Save all
+- Ctrl+P: Print
+- Ctrl+Shift+X: Exit or close compare view
+
+Edit:
+- Ctrl+Z: Undo
+- Ctrl+Shift+Z: Redo
+- Ctrl+X: Cut
+- Ctrl+C: Copy
+- Ctrl+V: Paste
+- Ctrl+A: Select all
+- Ctrl+F: Find
+- F3: Find next
+- Shift+F3: Find previous
+- Ctrl+R: Replace
+- Ctrl+D: Insert date
+- Ctrl+Shift+D: Insert time and date
+- Ctrl+Shift+F: Choose font
+
+View:
+- F11: Toggle fullscreen
+- Ctrl+Tab: Switch to the next tab
+- Ctrl+Shift+Tab: Switch to the previous tab
+- Ctrl+G: Go to line
+- Ctrl+Page Up: Move to the top of the document
+- Ctrl+Page Down: Move to the bottom of the document
+- Ctrl+Q: Compare tabs
+- Ctrl+Alt+Y: Toggle synchronized Page Up/Page Down in compare mode
+- Ctrl++: Zoom in
+- Ctrl+-: Zoom out
+
+Mouse Controls
+--------------
+
+- Right-click inside the editor for Cut, Copy, Paste, and Select All.
+- Right-click a tab to save, save as, copy the file path, copy the tab name, reveal the file in File Explorer, move the tab into a new Rustpad-X window, or close the tab.
+- Hover over a tab to see the full file path while keeping the visible tab label short.
+
+Tabs and Projects
+-----------------
+
+Tabs show the short file name, such as main.rs. The full path appears in the hover tooltip.
+
+Use File > Open Project to choose a folder. Rustpad-X looks for source/text/code files related to the current project and opens matching files while skipping common build and dependency folders such as target, node_modules, build, dist, bin, and obj.
+
+File Opening
+------------
+
+Rustpad-X supports common text, config, script, and code files, including TXT, INI, CFG, LOG, MD, RS, PY, JS, TS, HTML, CSS, JSON, XML, YAML, TOML, VBS, BAT, PS1, C/C++ headers/sources, Java, C#, Go, PHP, Ruby, Lua, SQL, RTF, and DOC files when readable as text.
+
+Compare Mode
+------------
+
+Use View > Compare Tabs to select another open tab for side-by-side comparison. Use View > Close Compare Tabs or Ctrl+Shift+X to leave compare mode. Synchronized Page Up/Page Down can be toggled from the View menu and is saved with the session.
+
+Session Restore
+---------------
+
+Rustpad-X restores its last session when launched normally. Opening files from the command line or moving a tab into a new window starts that window without replacing the saved session.
+
+Notes
+-----
+
+Bracket highlighting has been removed intentionally to keep RichEdit font, color, and find highlighting behavior stable.
