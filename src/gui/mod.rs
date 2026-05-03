@@ -18,6 +18,7 @@ const PATH_BAR_CLASS_NAME: &str = "Rustpad-XPathBar";
 const TAB_BAR_CLASS_NAME: &str = "Rustpad-XTabBar";
 const GUTTER_CLASS_NAME: &str = "Rustpad-XLineGutter";
 const STATUS_CLASS_NAME: &str = "Rustpad-XStatusBar";
+const COPY_INDICATOR_CLASS_NAME: &str = "Rustpad-XCopyIndicator";
 const COMPARE_SPLITTER_CLASS_NAME: &str = "Rustpad-XCompareSplitter";
 const GOTO_LINE_CLASS_NAME: &str = "Rustpad-XGotoLineDialog";
 const RICH_EDIT_CLASS_NAME: &str = "RICHEDIT50W";
@@ -35,6 +36,8 @@ const TAB_CLOSE_BUTTON_SIZE: i32 = 16;
 const TAB_CLOSE_BUTTON_MARGIN: i32 = 8;
 const GUTTER_WIDTH: i32 = 52;
 const STATUS_BAR_HEIGHT: i32 = 22;
+const COPY_INDICATOR_WIDTH: i32 = 68;
+const COPY_INDICATOR_HEIGHT: i32 = 24;
 const COMPARE_SPLITTER_WIDTH: i32 = 6;
 const COMPARE_SPLIT_CENTER: i32 = 5000;
 const STATUS_TIMER_ID: usize = 7000;
@@ -43,6 +46,8 @@ const MENU_SWITCH_TIMER_ID: usize = 7001;
 const MENU_SWITCH_TIMER_MS: Uint = 50;
 const FOLD_REFRESH_TIMER_ID: usize = 7002;
 const FOLD_REFRESH_TIMER_MS: Uint = 250;
+const COPY_INDICATOR_TIMER_ID: usize = 7003;
+const COPY_INDICATOR_TIMER_MS: Uint = 950;
 const MAX_PROJECT_FILES: usize = 200;
 const RECENT_FILE_LIMIT: usize = 10;
 const LARGE_TEXT_FEATURE_LIMIT: usize = 2 * 1024 * 1024;
@@ -873,6 +878,16 @@ impl Document {
             .unwrap_or_else(|| self.untitled_name.clone())
     }
 
+    fn tab_label(&self) -> String {
+        self.path
+            .as_deref()
+            .and_then(Path::file_stem)
+            .and_then(OsStr::to_str)
+            .filter(|stem| !stem.is_empty())
+            .map(str::to_owned)
+            .unwrap_or_else(|| self.display_name())
+    }
+
     fn location(&self) -> String {
         self.path
             .as_ref()
@@ -905,6 +920,7 @@ struct AppData {
     gutter: Hwnd,
     compare_gutter: Hwnd,
     status: Hwnd,
+    copy_indicator: Hwnd,
     _menu: Hmenu,
     file_menu: Hmenu,
     edit_menu: Hmenu,
@@ -953,6 +969,7 @@ struct AppData {
     last_gutter_first_visible_line: i32,
     line_probe_metrics: Option<LineProbeMetrics>,
     line_probe_cache: String,
+    copied_indicator_visible: bool,
     fold_ranges: Vec<FoldRange>,
     fold_formats_active: bool,
     fold_refresh_pending: bool,
@@ -993,6 +1010,7 @@ impl AppData {
             gutter: null_mut(),
             compare_gutter: null_mut(),
             status: null_mut(),
+            copy_indicator: null_mut(),
             _menu: menus.menu,
             file_menu: menus.file_menu,
             edit_menu: menus.edit_menu,
@@ -1049,6 +1067,7 @@ impl AppData {
             last_gutter_first_visible_line: 0,
             line_probe_metrics: None,
             line_probe_cache: String::new(),
+            copied_indicator_visible: false,
             fold_ranges: Vec::new(),
             fold_formats_active: false,
             fold_refresh_pending: false,

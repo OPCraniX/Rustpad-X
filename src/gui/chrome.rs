@@ -446,6 +446,34 @@ fn draw_path_bar_text(app: &AppData, hdc: Hdc, rect: Rect) {
     restore_font(hdc, old_font);
 }
 
+fn paint_copied_indicator(hwnd: Hwnd) {
+    let parent = unsafe { GetParent(hwnd) };
+    let mut paint: PaintStruct = unsafe { zeroed() };
+    let hdc = unsafe { BeginPaint(hwnd, &mut paint) };
+
+    if hdc.is_null() {
+        return;
+    }
+
+    let mut rect = empty_rect();
+    unsafe {
+        GetClientRect(hwnd, &mut rect);
+    }
+
+    let app = app_data_ptr(parent);
+    if app.is_null() {
+        fill_rect_with_color(hdc, &rect, Theme::Dark.palette().tab_active_background);
+    } else {
+        unsafe {
+            draw_copied_indicator(&*app, hdc, rect);
+        }
+    }
+
+    unsafe {
+        EndPaint(hwnd, &paint);
+    }
+}
+
 fn paint_tab_bar(hwnd: Hwnd) {
     let parent = unsafe { GetParent(hwnd) };
     let mut paint: PaintStruct = unsafe { zeroed() };
@@ -489,7 +517,8 @@ fn draw_tabs(app: &AppData, hdc: Hdc, rect: Rect) {
         let active = index == app.active_tab;
         let hovered = app.tab_hover_index == Some(index);
         let close_hovered = app.tab_hover_close_index == Some(index);
-        let width = tab_width(hdc, &document.display_name());
+        let label = document.tab_label();
+        let width = tab_width(hdc, &label);
         let right = (x + width).min(rect.right);
         let tab_rect = Rect {
             left: x,
@@ -536,12 +565,7 @@ fn draw_tabs(app: &AppData, hdc: Hdc, rect: Rect) {
                 },
             );
         }
-        draw_single_line(
-            hdc,
-            &document.display_name(),
-            &mut text_rect,
-            DT_END_ELLIPSIS,
-        );
+        draw_single_line(hdc, &label, &mut text_rect, DT_END_ELLIPSIS);
 
         draw_tab_close_button(app, hdc, close_rect, active, close_hovered);
 
@@ -1677,6 +1701,19 @@ fn document_line_end_utf16(document: &Document, line_index: i32) -> Option<i32> 
     )
 }
 
+fn document_line_text(document: &Document, line_index: i32) -> Option<String> {
+    let start = document_line_start_utf16(document, line_index)?;
+    let end = document_line_end_utf16(document, line_index)?;
+    let start_byte = byte_index_from_utf16_pos(&document.text, start);
+    let end_byte = byte_index_from_utf16_pos(&document.text, end);
+
+    Some(
+        document.text[start_byte..end_byte]
+            .trim_end_matches(['\r', '\n'])
+            .to_string(),
+    )
+}
+
 fn active_document_line_count(app: &AppData) -> usize {
     app.documents
         .get(app.active_tab)
@@ -1984,7 +2021,7 @@ fn tab_index_at_x(app: &AppData, x: i32) -> Option<usize> {
     let mut hit = None;
 
     for (index, document) in app.documents.iter().enumerate() {
-        let width = tab_width(hdc, &document.display_name());
+        let width = tab_width(hdc, &document.tab_label());
         if x >= current_x && x < current_x + width {
             hit = Some(index);
             break;
@@ -2011,7 +2048,7 @@ fn tab_close_index_at_point(app: &AppData, x: i32, y: i32) -> Option<usize> {
     let mut hit = None;
 
     for (index, document) in app.documents.iter().enumerate() {
-        let width = tab_width(hdc, &document.display_name());
+        let width = tab_width(hdc, &document.tab_label());
         let tab_rect = Rect {
             left: current_x,
             top: 0,
@@ -2163,7 +2200,7 @@ fn show_tab_context_menu(app: &mut AppData, point: Point) {
     }
 }
 
-fn copy_tab_path(app: &AppData, index: usize) {
+fn copy_tab_path(app: &mut AppData, index: usize) {
     let Some(document) = app.documents.get(index) else {
         return;
     };
@@ -2184,10 +2221,12 @@ fn copy_tab_path(app: &AppData, index: usize) {
             "Copy Failed",
             MB_OK | MB_ICONERROR,
         );
+    } else {
+        show_copied_indicator(app);
     }
 }
 
-fn copy_tab_name(app: &AppData, index: usize) {
+fn copy_tab_name(app: &mut AppData, index: usize) {
     let Some(document) = app.documents.get(index) else {
         return;
     };
@@ -2199,6 +2238,8 @@ fn copy_tab_name(app: &AppData, index: usize) {
             "Copy Failed",
             MB_OK | MB_ICONERROR,
         );
+    } else {
+        show_copied_indicator(app);
     }
 }
 
@@ -2282,11 +2323,122 @@ fn handle_path_bar_click(app: &mut AppData, x: i32) {
             "Copy Failed",
             MB_OK | MB_ICONERROR,
         );
+    } else {
+        show_copied_indicator(app);
     }
 }
 
+fn copy_gutter_line_at_y(app: &mut AppData, gutter: Hwnd, y: i32) {
+    let edit = if gutter == app.compare_gutter {
+        app.compare_edit
+    } else {
+        sync_active_document_text(app);
+        app.edit
+    };
+
+    let Some(line_index) = gutter_line_at_y_for(app, y, edit, gutter) else {
+        return;
+    };
+    let Some(line_text) = document_line_text(document_for_editor(app, edit), line_index) else {
+        return;
+    };
+
+    if let Err(error) = copy_text_to_clipboard(app.hwnd, &line_text) {
+        message_box(
+            app.hwnd,
+            &format!("Could not copy to the clipboard:\n\n{error}"),
+            "Copy Failed",
+            MB_OK | MB_ICONERROR,
+        );
+    } else {
+        show_copied_indicator(app);
+    }
+}
+
+fn show_copied_indicator(app: &mut AppData) {
+    if app.copy_indicator.is_null() {
+        return;
+    }
+
+    app.copied_indicator_visible = true;
+
+    let mut point = Point { x: 0, y: 0 };
+    unsafe {
+        if GetCursorPos(&mut point) == 0 || ScreenToClient(app.hwnd, &mut point) == 0 {
+            point = Point { x: 16, y: 16 };
+        }
+    }
+
+    let mut client_rect = empty_rect();
+    unsafe {
+        GetClientRect(app.hwnd, &mut client_rect);
+    }
+    let left = (point.x + 14)
+        .min(client_rect.right - COPY_INDICATOR_WIDTH - 4)
+        .max(client_rect.left + 4);
+    let top = (point.y + 18)
+        .min(client_rect.bottom - COPY_INDICATOR_HEIGHT - 4)
+        .max(client_rect.top + 4);
+
+    unsafe {
+        SetWindowPos(
+            app.copy_indicator,
+            null_mut(),
+            left,
+            top,
+            COPY_INDICATOR_WIDTH,
+            COPY_INDICATOR_HEIGHT,
+            SWP_NOACTIVATE | SWP_SHOWWINDOW,
+        );
+        SetTimer(
+            app.hwnd,
+            COPY_INDICATOR_TIMER_ID,
+            COPY_INDICATOR_TIMER_MS,
+            null_mut(),
+        );
+        InvalidateRect(app.copy_indicator, null(), 0);
+        UpdateWindow(app.copy_indicator);
+    }
+}
+
+fn hide_copied_indicator(app: &mut AppData) {
+    if !app.copied_indicator_visible {
+        return;
+    }
+
+    app.copied_indicator_visible = false;
+    unsafe {
+        ShowWindow(app.copy_indicator, SW_HIDE);
+    }
+}
+
+fn draw_copied_indicator(app: &AppData, hdc: Hdc, rect: Rect) {
+    let palette = app.theme.palette();
+    fill_rect_with_color(hdc, &rect, palette.tab_border);
+
+    let inner = Rect {
+        left: rect.left + 1,
+        top: rect.top + 1,
+        right: rect.right - 1,
+        bottom: rect.bottom - 1,
+    };
+    fill_rect_with_color(hdc, &inner, palette.tab_active_background);
+
+    let mut text_rect = inner;
+    unsafe {
+        SetBkMode(hdc, TRANSPARENT);
+        SetTextColor(hdc, palette.tab_active_text);
+    }
+    draw_single_line(
+        hdc,
+        "Copied",
+        &mut text_rect,
+        DT_SINGLELINE | DT_VCENTER | DT_CENTER,
+    );
+}
+
 fn tab_width(hdc: Hdc, label: &str) -> i32 {
-    (measure_text_width(hdc, label) + 36).clamp(96, 220)
+    (measure_text_width(hdc, label) + 56).max(112)
 }
 
 fn select_gui_font(hdc: Hdc) -> Hgdiobj {

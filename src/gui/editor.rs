@@ -233,6 +233,28 @@ fn create_editor_controls(app: &mut AppData) -> io::Result<()> {
         return Err(io::Error::last_os_error());
     }
 
+    let copy_indicator_class = to_wide(COPY_INDICATOR_CLASS_NAME);
+    app.copy_indicator = unsafe {
+        CreateWindowExW(
+            0,
+            copy_indicator_class.as_ptr(),
+            null(),
+            WS_CHILD as Dword,
+            0,
+            0,
+            COPY_INDICATOR_WIDTH,
+            COPY_INDICATOR_HEIGHT,
+            app.hwnd,
+            null_mut(),
+            null_mut(),
+            null_mut(),
+        )
+    };
+
+    if app.copy_indicator.is_null() {
+        return Err(io::Error::last_os_error());
+    }
+
     app.font = create_editor_font(app)?;
     if app.font.is_null() {
         return Err(io::Error::last_os_error());
@@ -249,6 +271,7 @@ fn create_editor_controls(app: &mut AppData) -> io::Result<()> {
         apply_word_wrap_to_edit(app, app.edit);
         apply_word_wrap_to_edit(app, app.compare_edit);
         ShowWindow(app.line_probe, SW_HIDE);
+        ShowWindow(app.copy_indicator, SW_HIDE);
         apply_rich_edit_theme(app);
         let previous = SetWindowLongPtrW(
             app.edit,
@@ -1345,11 +1368,15 @@ fn toggle_fold_from_gutter_y(app: &mut AppData, y: i32) {
 }
 
 fn gutter_line_at_y(app: &AppData, y: i32) -> Option<i32> {
-    if app.edit.is_null() || app.gutter.is_null() {
+    gutter_line_at_y_for(app, y, app.edit, app.gutter)
+}
+
+fn gutter_line_at_y_for(app: &AppData, y: i32, edit: Hwnd, gutter: Hwnd) -> Option<i32> {
+    if edit.is_null() || gutter.is_null() {
         return None;
     }
 
-    let hdc = unsafe { GetDC(app.gutter) };
+    let hdc = unsafe { GetDC(gutter) };
     if hdc.is_null() {
         return None;
     }
@@ -1361,11 +1388,11 @@ fn gutter_line_at_y(app: &AppData, y: i32) -> Option<i32> {
     };
     let mut rect = empty_rect();
     unsafe {
-        GetClientRect(app.gutter, &mut rect);
+        GetClientRect(gutter, &mut rect);
     }
 
     let mut hit = None;
-    let rows = visible_gutter_rows(app, hdc, rect, app.edit, app.gutter);
+    let rows = visible_gutter_rows(app, hdc, rect, edit, gutter);
     for (index, row) in rows.iter().enumerate() {
         let bottom = rows
             .get(index + 1)
@@ -1383,7 +1410,7 @@ fn gutter_line_at_y(app: &AppData, y: i32) -> Option<i32> {
         }
     }
     unsafe {
-        ReleaseDC(app.gutter, hdc);
+        ReleaseDC(gutter, hdc);
     }
 
     hit

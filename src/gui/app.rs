@@ -124,6 +124,24 @@ pub fn run() -> io::Result<()> {
         return Err(io::Error::last_os_error());
     }
 
+    let copy_indicator_class_name = to_wide(COPY_INDICATOR_CLASS_NAME);
+    let copy_indicator_class = WndClassW {
+        style: CS_HREDRAW | CS_VREDRAW,
+        lpfnWndProc: Some(copy_indicator_proc),
+        cbClsExtra: 0,
+        cbWndExtra: 0,
+        hInstance: instance,
+        hIcon: null_mut(),
+        hCursor: unsafe { LoadCursorW(null_mut(), IDC_ARROW) },
+        hbrBackground: null_mut(),
+        lpszMenuName: null(),
+        lpszClassName: copy_indicator_class_name.as_ptr(),
+    };
+
+    if unsafe { RegisterClassW(&copy_indicator_class) } == 0 {
+        return Err(io::Error::last_os_error());
+    }
+
     let splitter_class_name = to_wide(COMPARE_SPLITTER_CLASS_NAME);
     let splitter_class = WndClassW {
         style: CS_HREDRAW | CS_VREDRAW,
@@ -393,6 +411,13 @@ unsafe extern "system" fn window_proc(
                     app.fold_refresh_timer_active = false;
                     run_pending_fold_refresh(app);
                 });
+            } else if wparam == COPY_INDICATOR_TIMER_ID {
+                unsafe {
+                    KillTimer(hwnd, COPY_INDICATOR_TIMER_ID);
+                }
+                with_app_data(hwnd, |app| {
+                    hide_copied_indicator(app);
+                });
             } else if wparam == MENU_SWITCH_TIMER_ID && poll_menu_bar_hover(hwnd) {
                 unsafe {
                     EndMenu();
@@ -432,6 +457,7 @@ unsafe extern "system" fn window_proc(
                 DragAcceptFiles(hwnd, 0);
                 KillTimer(hwnd, STATUS_TIMER_ID);
                 KillTimer(hwnd, FOLD_REFRESH_TIMER_ID);
+                KillTimer(hwnd, COPY_INDICATOR_TIMER_ID);
                 PostQuitMessage(0);
             }
             0
@@ -567,7 +593,14 @@ unsafe extern "system" fn gutter_proc(
             0
         }
         WM_MOUSEMOVE => 0,
-        WM_LBUTTONUP => 0,
+        WM_LBUTTONUP => {
+            let parent = unsafe { GetParent(hwnd) };
+            let y = signed_high_word(lparam as usize);
+            with_app_data(parent, |app| {
+                copy_gutter_line_at_y(app, hwnd, y);
+            });
+            0
+        }
         WM_ERASEBKGND => 1,
         _ => unsafe { DefWindowProcW(hwnd, message, wparam, lparam) },
     }
@@ -582,6 +615,22 @@ unsafe extern "system" fn status_proc(
     match message {
         WM_PAINT => {
             paint_status_bar(hwnd);
+            0
+        }
+        WM_ERASEBKGND => 1,
+        _ => unsafe { DefWindowProcW(hwnd, message, wparam, lparam) },
+    }
+}
+
+unsafe extern "system" fn copy_indicator_proc(
+    hwnd: Hwnd,
+    message: Uint,
+    wparam: Wparam,
+    lparam: Lparam,
+) -> Lresult {
+    match message {
+        WM_PAINT => {
+            paint_copied_indicator(hwnd);
             0
         }
         WM_ERASEBKGND => 1,

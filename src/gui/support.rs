@@ -1384,6 +1384,31 @@ mod tests {
     }
 
     #[test]
+    fn document_line_text_excludes_line_breaks() {
+        let document = Document::from_file(
+            PathBuf::from(r"C:\repo\sample.rs"),
+            "alpha\r\nbeta\ngamma".to_string(),
+            LineEnding::Mixed,
+        );
+
+        assert_eq!(document_line_text(&document, 0), Some("alpha".to_string()));
+        assert_eq!(document_line_text(&document, 1), Some("beta".to_string()));
+        assert_eq!(document_line_text(&document, 2), Some("gamma".to_string()));
+    }
+
+    #[test]
+    fn tab_label_removes_extension_only() {
+        let document = Document::from_file(
+            PathBuf::from(r"C:\repo\ExternalInventoryHashAssigner.java"),
+            String::new(),
+            LineEnding::Lf,
+        );
+
+        assert_eq!(document.display_name(), "ExternalInventoryHashAssigner.java");
+        assert_eq!(document.tab_label(), "ExternalInventoryHashAssigner");
+    }
+
+    #[test]
     fn project_open_anchors_on_selected_source_tree() {
         let source =
             Path::new(r"C:\repo\BlockSigningPlugin\src\main\java\org\example\Plugin.java");

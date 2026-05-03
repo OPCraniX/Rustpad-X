@@ -6,13 +6,15 @@ Rustpad-X is a native Windows text/code editor written in Rust with a low-level 
 
 - Native Windows GUI with no runtime framework dependency.
 - Multiple tabs with recent files and persistent session restore.
-- Short tab labels for readability, with full file paths shown on tab hover tooltips.
+- Full tab labels without file extensions.
 - Cleaner tab close buttons and hover feedback.
 - Open single files or scan a project folder for matching source/text/code files.
 - Broader text/code file opening support, including common config and programming extensions such as `.txt`, `.ini`, `.cfg`, `.log`, `.md`, `.rs`, `.py`, `.js`, `.ts`, `.html`, `.css`, `.json`, `.xml`, `.yml`, `.yaml`, `.toml`, `.vbs`, `.bat`, `.ps1`, `.c`, `.cpp`, `.h`, `.hpp`, `.java`, `.cs`, `.go`, `.php`, `.rb`, `.lua`, `.sql`, `.rtf`, and `.doc` when readable as text.
 - Save, Save As, Save All, print, and reveal files in File Explorer.
 - Find, find next/previous, replace, go to line, and top/bottom navigation.
 - Right-click editor menu with Cut, Copy, Paste, and Select All.
+- Click the path bar to copy the current file name or location, with a Copied indicator beside the cursor.
+- Click a gutter line number to copy that line of code.
 - Word wrap is enabled by default and persists with the session.
 - Line numbers, code folding, zoom, font selection, fullscreen mode, and light/dark themes.
 - Side-by-side tab comparison with optional synchronized Page Up/Page Down scrolling.

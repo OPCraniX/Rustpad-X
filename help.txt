@@ -48,13 +48,15 @@ Mouse Controls
 --------------
 
 - Right-click inside the editor for Cut, Copy, Paste, and Select All.
+- Click a line number in the gutter to copy that line of code.
+- Click the file name or location above the tabs to copy it. Rustpad-X shows Copied beside the cursor when the clipboard is updated.
 - Right-click a tab to save, save as, copy the file path, copy the tab name, reveal the file in File Explorer, or close the tab.
-- Hover over a tab to see the full file path while keeping the visible tab label short.
+- Tabs show full file names without extensions. The current file location stays available above the tabs.
 
 Tabs and Projects
 -----------------
 
-Tabs show the short file name, such as main.rs. The full path appears in the hover tooltip.
+Tabs show the full file name without the extension, such as main. The current file location appears above the tabs.
 
 Use File > Open Project to choose a folder. Rustpad-X looks for source/text/code files related to the current project and opens matching files while skipping common build and dependency folders such as target, node_modules, build, dist, bin, and obj.
 
