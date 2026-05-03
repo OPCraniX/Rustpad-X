@@ -16,7 +16,9 @@ fn load_session_state() -> SessionState {
         if let Some(value) = line.strip_prefix("active=") {
             state.active_tab = value.parse::<usize>().unwrap_or(0);
         } else if let Some(value) = line.strip_prefix("compare_page_sync=") {
-            state.compare_page_sync = matches!(value.trim(), "1" | "true" | "yes" | "on");
+            state.compare_page_sync = session_bool(value);
+        } else if let Some(value) = line.strip_prefix("word_wrap=") {
+            state.word_wrap_enabled = session_bool(value);
         } else if let Some(value) = line.strip_prefix("recent=") {
             if !value.trim().is_empty() && state.recent_files.len() < RECENT_FILE_LIMIT {
                 state.recent_files.push(PathBuf::from(value));
@@ -48,7 +50,12 @@ fn empty_session_state() -> SessionState {
         tabs: Vec::new(),
         active_tab: 0,
         compare_page_sync: false,
+        word_wrap_enabled: true,
     }
+}
+
+fn session_bool(value: &str) -> bool {
+    matches!(value.trim(), "1" | "true" | "yes" | "on")
 }
 
 fn restored_session_documents(
@@ -217,6 +224,10 @@ fn save_session_state(app: &mut AppData) {
     text.push_str(&format!(
         "compare_page_sync={}\n",
         if app.compare_page_sync { 1 } else { 0 }
+    ));
+    text.push_str(&format!(
+        "word_wrap={}\n",
+        if app.word_wrap_enabled { 1 } else { 0 }
     ));
     for path in app.recent_files.iter().take(RECENT_FILE_LIMIT) {
         text.push_str("recent=");

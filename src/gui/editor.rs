@@ -135,17 +135,18 @@ fn create_editor_controls(app: &mut AppData) -> io::Result<()> {
     } else {
         to_wide("EDIT")
     };
-    let edit_style = WS_CHILD
+    let mut edit_style = WS_CHILD
         | WS_VISIBLE
         | WS_TABSTOP
         | WS_VSCROLL
-        | WS_HSCROLL
         | ES_LEFT
         | ES_MULTILINE
         | ES_AUTOVSCROLL
-        | ES_AUTOHSCROLL
         | ES_NOHIDESEL
         | ES_WANTRETURN;
+    if !app.word_wrap_enabled {
+        edit_style |= WS_HSCROLL | ES_AUTOHSCROLL;
+    }
 
     app.edit = unsafe {
         CreateWindowExW(
@@ -245,8 +246,8 @@ fn create_editor_controls(app: &mut AppData) -> io::Result<()> {
         SendMessageW(app.compare_edit, WM_SETFONT, app.font as Wparam, 1);
         SendMessageW(app.line_probe, WM_SETFONT, app.font as Wparam, 1);
         apply_editor_char_formats(app);
-        force_single_visual_line_per_document_line(app, app.edit);
-        force_single_visual_line_per_document_line(app, app.compare_edit);
+        apply_word_wrap_to_edit(app, app.edit);
+        apply_word_wrap_to_edit(app, app.compare_edit);
         ShowWindow(app.line_probe, SW_HIDE);
         apply_rich_edit_theme(app);
         let previous = SetWindowLongPtrW(

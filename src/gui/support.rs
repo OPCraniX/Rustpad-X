@@ -20,6 +20,53 @@ fn toggle_line_numbers(app: &mut AppData) {
     invalidate_status(app);
 }
 
+fn toggle_word_wrap(app: &mut AppData) {
+    app.word_wrap_enabled = !app.word_wrap_enabled;
+    update_word_wrap_menu_item(app);
+    apply_word_wrap_to_edit(app, app.edit);
+    apply_word_wrap_to_edit(app, app.compare_edit);
+    relayout_current_client(app);
+    ensure_gutter_sync(app);
+    invalidate_gutter(app);
+    refresh_status_if_changed(app);
+    save_session_state(app);
+}
+
+fn apply_word_wrap_to_edit(app: &AppData, edit: Hwnd) {
+    if edit.is_null() {
+        return;
+    }
+
+    let style = unsafe { GetWindowLongPtrW(edit, GWL_STYLE) };
+    let new_style = if app.word_wrap_enabled {
+        style & !WS_HSCROLL & !ES_AUTOHSCROLL
+    } else {
+        style | WS_HSCROLL | ES_AUTOHSCROLL
+    };
+
+    unsafe {
+        if new_style != style {
+            SetWindowLongPtrW(edit, GWL_STYLE, new_style);
+            SetWindowPos(
+                edit,
+                null_mut(),
+                0,
+                0,
+                0,
+                0,
+                SWP_NOMOVE | SWP_NOSIZE | SWP_NOZORDER | SWP_NOACTIVATE | SWP_FRAMECHANGED,
+            );
+        }
+
+        if app.use_rich_edit {
+            let wrap_width = if app.word_wrap_enabled { 0 } else { 1 };
+            SendMessageW(edit, EM_SETTARGETDEVICE, 0, wrap_width);
+        }
+
+        InvalidateRect(edit, null(), 1);
+    }
+}
+
 fn set_theme(app: &mut AppData, theme: Theme) {
     if app.theme == theme {
         return;
@@ -79,6 +126,24 @@ fn update_line_number_menu_item(app: &AppData) {
         CheckMenuItem(
             app.view_menu,
             ID_VIEW_LINE_NUMBERS as Uint,
+            MF_BYCOMMAND | check_state,
+        );
+        DrawMenuBar(app.hwnd);
+        InvalidateRect(app.menu_bar, null(), 0);
+    }
+}
+
+fn update_word_wrap_menu_item(app: &AppData) {
+    let check_state = if app.word_wrap_enabled {
+        MF_CHECKED
+    } else {
+        MF_UNCHECKED
+    };
+
+    unsafe {
+        CheckMenuItem(
+            app.view_menu,
+            ID_VIEW_WORD_WRAP as Uint,
             MF_BYCOMMAND | check_state,
         );
         DrawMenuBar(app.hwnd);
@@ -371,6 +436,12 @@ fn create_main_menu() -> io::Result<MainMenus> {
         "Close Compare Tabs\tCtrl+Shift+X",
     )?;
     append_menu(view_menu, MF_SEPARATOR, 0, "")?;
+    append_menu(
+        view_menu,
+        MF_STRING | MF_CHECKED,
+        ID_VIEW_WORD_WRAP as usize,
+        "&Word Wrap",
+    )?;
     append_menu(
         view_menu,
         MF_STRING | MF_CHECKED,
@@ -1305,6 +1376,11 @@ mod tests {
             from_edit_line_endings_with("one\rtwo", LineEnding::Lf),
             "one\ntwo"
         );
+    }
+
+    #[test]
+    fn default_session_enables_word_wrap() {
+        assert!(empty_session_state().word_wrap_enabled);
     }
 
     #[test]

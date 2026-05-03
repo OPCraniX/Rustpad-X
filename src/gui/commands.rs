@@ -30,6 +30,7 @@ fn handle_command(app: &mut AppData, command_id: u16) {
             SendMessageW(app.edit, EM_SETSEL, 0, -1);
         },
         ID_VIEW_LINE_NUMBERS => toggle_line_numbers(app),
+        ID_VIEW_WORD_WRAP => toggle_word_wrap(app),
         ID_VIEW_FULLSCREEN => toggle_fullscreen(app),
         ID_VIEW_ZOOM_IN => adjust_zoom(app, ZOOM_STEP_PERCENT),
         ID_VIEW_ZOOM_OUT => adjust_zoom(app, -ZOOM_STEP_PERCENT),
@@ -465,18 +466,6 @@ fn set_active_edit_text(app: &mut AppData, text: &str) {
     ensure_gutter_sync(app);
 }
 
-fn force_single_visual_line_per_document_line(app: &AppData, edit: Hwnd) {
-    if edit.is_null() {
-        return;
-    }
-
-    if app.use_rich_edit {
-        unsafe {
-            SendMessageW(edit, EM_SETTARGETDEVICE, 0, 1);
-        }
-    }
-}
-
 fn set_compare_edit_text(app: &mut AppData, text: &str) {
     let edit = app.compare_edit;
     set_edit_text_without_notifications(app, edit, text);
@@ -488,7 +477,7 @@ fn set_edit_text_without_notifications(app: &mut AppData, edit: Hwnd, text: &str
         SendMessageW(edit, WM_SETREDRAW, 0, 0);
     }
     set_edit_text(edit, text);
-    force_single_visual_line_per_document_line(app, edit);
+    apply_word_wrap_to_edit(app, edit);
     unsafe {
         SendMessageW(edit, EM_EMPTYUNDOBUFFER, 0, 0);
         SendMessageW(edit, WM_SETREDRAW, 1, 0);

@@ -104,6 +104,7 @@ const ID_VIEW_BOTTOM_OF_DOCUMENT: u16 = 3011;
 const ID_VIEW_COMPARE_TABS: u16 = 3012;
 const ID_VIEW_CLOSE_COMPARE_TABS: u16 = 3013;
 const ID_VIEW_SYNC_COMPARE_PAGING: u16 = 3014;
+const ID_VIEW_WORD_WRAP: u16 = 3015;
 const ID_HELP_ABOUT: u16 = 4001;
 const ID_GOTO_LINE_EDIT: u16 = 6001;
 const ID_GOTO_LINE_OK: u16 = 6002;
@@ -200,6 +201,10 @@ const SS_LEFT: isize = 0x00000000;
 
 const SW_SHOW: Int = 5;
 const SW_HIDE: Int = 0;
+const SWP_NOSIZE: Uint = 0x0001;
+const SWP_NOMOVE: Uint = 0x0002;
+const SWP_NOZORDER: Uint = 0x0004;
+const SWP_NOACTIVATE: Uint = 0x0010;
 const SWP_FRAMECHANGED: Uint = 0x0020;
 const SWP_SHOWWINDOW: Uint = 0x0040;
 const SWP_NOOWNERZORDER: Uint = 0x0200;
@@ -613,6 +618,7 @@ struct SessionState {
     tabs: Vec<SessionTab>,
     active_tab: usize,
     compare_page_sync: bool,
+    word_wrap_enabled: bool,
 }
 
 #[derive(Clone, Copy)]
@@ -914,6 +920,7 @@ struct AppData {
     theme: Theme,
     editor_background_brush: Brush,
     line_numbers_visible: bool,
+    word_wrap_enabled: bool,
     documents: Vec<Document>,
     recent_files: Vec<PathBuf>,
     active_tab: usize,
@@ -1001,6 +1008,11 @@ impl AppData {
             theme,
             editor_background_brush: create_theme_editor_brush(theme)?,
             line_numbers_visible: true,
+            word_wrap_enabled: if startup.persist_session {
+                session.word_wrap_enabled
+            } else {
+                true
+            },
             documents,
             recent_files,
             active_tab,

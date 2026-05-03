@@ -13,6 +13,7 @@ Rustpad-X is a native Windows text/code editor written in Rust with a low-level 
 - Save, Save As, Save All, print, and reveal files in File Explorer.
 - Find, find next/previous, replace, go to line, and top/bottom navigation.
 - Right-click editor menu with Cut, Copy, Paste, and Select All.
+- Word wrap is enabled by default and persists with the session.
 - Line numbers, code folding, zoom, font selection, fullscreen mode, and light/dark themes.
 - Side-by-side tab comparison with optional synchronized Page Up/Page Down scrolling.
 - Compare Page Up/Page Down sync is persisted with the session.
@@ -57,7 +58,8 @@ cargo run -- C:\path\to\file.txt
 
 ## Project Layout
 
-- `src\main.rs` contains the Win32 editor implementation.
+- `src\main.rs` contains the app entrypoint.
+- `src\gui\` contains the Win32 editor implementation split into focused modules.
 - `assets\Rustpad-X.ico` is embedded into Windows builds, if present.
 - `assets\Rustpad-X.resources.o` may be linked by `.cargo\config.toml` to provide the app icon and executable metadata.
 - `help.txt` provides end-user usage notes.

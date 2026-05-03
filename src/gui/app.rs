@@ -302,6 +302,7 @@ unsafe extern "system" fn window_proc(
                 apply_native_window_theme(app);
                 create_editor_controls(app)?;
                 update_line_number_menu_item(app);
+                update_word_wrap_menu_item(app);
                 update_theme_menu_items(app);
                 update_compare_page_sync_menu_item(app);
                 update_recent_files_menu(app);
