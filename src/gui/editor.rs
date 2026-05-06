@@ -1876,6 +1876,7 @@ fn apply_editor_char_format(app: &AppData, edit: Hwnd) {
         return;
     }
 
+    let (selection_start, selection_end) = edit_selection(edit);
     let palette = app.theme.palette();
     let mut format: CharFormat2W = unsafe { zeroed() };
     format.cbSize = size_of::<CharFormat2W>() as Uint;
@@ -1888,6 +1889,7 @@ fn apply_editor_char_format(app: &AppData, edit: Hwnd) {
     copy_wide_string_into_fixed(&app.font_face, &mut format.szFaceName);
 
     unsafe {
+        SendMessageW(edit, WM_SETREDRAW, 0, 0);
         SendMessageW(
             edit,
             EM_SETCHARFORMAT,
@@ -1896,10 +1898,24 @@ fn apply_editor_char_format(app: &AppData, edit: Hwnd) {
         );
         SendMessageW(
             edit,
+            EM_SETSEL,
+            selection_start.max(0) as Wparam,
+            selection_end.max(0) as Lparam,
+        );
+        SendMessageW(
+            edit,
             EM_SETCHARFORMAT,
-            0,
+            SCF_SELECTION,
             (&mut format as *mut CharFormat2W) as Lparam,
         );
+        SendMessageW(
+            edit,
+            EM_SETSEL,
+            selection_start.max(0) as Wparam,
+            selection_end.max(0) as Lparam,
+        );
+        SendMessageW(edit, WM_SETREDRAW, 1, 0);
+        InvalidateRect(edit, null(), 1);
     }
 }
 
