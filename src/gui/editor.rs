@@ -465,6 +465,18 @@ fn handle_editor_key_command(edit: Hwnd, wparam: Wparam) -> bool {
         }
     }
 
+    if (key == VK_NEXT || key == VK_PRIOR) && control_down && !shift_down && !alt_down {
+        let parent = unsafe { GetParent(edit) };
+        let handled = with_app_data(parent, |app| {
+            move_synced_editor_to_document_edge(app, edit, key == VK_NEXT)
+        })
+        .unwrap_or(false);
+
+        if handled {
+            return true;
+        }
+    }
+
     if (key == VK_NEXT || key == VK_PRIOR) && !control_down && !shift_down && !alt_down {
         let parent = unsafe { GetParent(edit) };
         let handled = with_app_data(parent, |app| {
@@ -745,14 +757,53 @@ fn page_editor_by_visible_span(app: &mut AppData, edit: Hwnd, page_down: bool) -
         InvalidateRect(edit, null(), 1);
     }
 
-    sync_compare_page_scroll_for_app(app, edit, actual_delta);
+    sync_compare_page_scroll_for_keyboard_page(app, edit, actual_delta);
     if edit == app.edit {
         ensure_gutter_sync(app);
         refresh_status_if_changed(app);
         invalidate_gutter(app);
+    } else {
+        refresh_status_if_changed(app);
     }
 
     true
+}
+
+fn move_synced_editor_to_document_edge(app: &mut AppData, edit: Hwnd, bottom: bool) -> bool {
+    if !app.compare_page_sync || app.compare_tab.is_none() || !is_editor_child(app, edit) {
+        return false;
+    }
+
+    move_single_editor_to_document_edge(edit, bottom, true);
+    if let Some(target) = compare_sync_target(app, edit) {
+        move_single_editor_to_document_edge(target, bottom, false);
+    }
+
+    ensure_gutter_sync(app);
+    invalidate_gutter(app);
+    refresh_status_if_changed(app);
+    true
+}
+
+fn move_single_editor_to_document_edge(edit: Hwnd, bottom: bool, focus: bool) {
+    if edit.is_null() {
+        return;
+    }
+
+    let position = if bottom {
+        unsafe { SendMessageW(edit, WM_GETTEXTLENGTH, 0, 0).max(0) }
+    } else {
+        0
+    };
+
+    unsafe {
+        SendMessageW(edit, EM_SETSEL, position as Wparam, position as Lparam);
+        SendMessageW(edit, EM_SCROLLCARET, 0, 0);
+        if focus {
+            SetFocus(edit);
+        }
+        InvalidateRect(edit, null(), 1);
+    }
 }
 
 fn visible_page_line_delta(app: &AppData, edit: Hwnd, first_visible: i32) -> i32 {
@@ -1441,6 +1492,23 @@ fn should_sync_compare_page_key(edit: Hwnd, wparam: Wparam) -> bool {
     should_sync_compare_page_scroll(edit)
 }
 
+fn should_bypass_accelerator_for_compare_page_key(message: &Msg) -> bool {
+    if message.message != WM_KEYDOWN {
+        return false;
+    }
+
+    let key = message.wParam as u16;
+    if key != VK_PRIOR && key != VK_NEXT {
+        return false;
+    }
+
+    if !key_is_down(VK_CONTROL) || key_is_down(VK_SHIFT) || key_is_down(VK_MENU) {
+        return false;
+    }
+
+    should_sync_compare_page_scroll(message.hwnd)
+}
+
 fn first_visible_line(edit: Hwnd) -> i32 {
     (unsafe { SendMessageW(edit, EM_GETFIRSTVISIBLELINE, 0, 0) } as i32).max(0)
 }
@@ -1550,24 +1618,57 @@ fn sync_compare_page_scroll(scrolled_edit: Hwnd, line_delta: i32) {
 }
 
 fn sync_compare_page_scroll_for_app(app: &mut AppData, scrolled_edit: Hwnd, line_delta: i32) {
+    sync_compare_page_scroll_for_app_with_caret(app, scrolled_edit, line_delta, false);
+}
+
+fn sync_compare_page_scroll_for_keyboard_page(
+    app: &mut AppData,
+    scrolled_edit: Hwnd,
+    line_delta: i32,
+) {
+    sync_compare_page_scroll_for_app_with_caret(app, scrolled_edit, line_delta, true);
+}
+
+fn sync_compare_page_scroll_for_app_with_caret(
+    app: &mut AppData,
+    scrolled_edit: Hwnd,
+    line_delta: i32,
+    align_target_caret: bool,
+) {
     if line_delta == 0 || !app.compare_page_sync || app.compare_tab.is_none() {
         return;
     }
 
-    let target = if scrolled_edit == app.edit {
-        app.compare_edit
-    } else if scrolled_edit == app.compare_edit {
-        app.edit
-    } else {
+    let Some(target) = compare_sync_target(app, scrolled_edit) else {
         return;
     };
+
+    let target_column = align_target_caret.then(|| caret_column_offset(app, target));
 
     unsafe {
         SendMessageW(target, EM_LINESCROLL, 0, line_delta as Lparam);
         InvalidateRect(target, null(), 1);
     }
+
+    if let Some(column) = target_column {
+        let line_count = editor_document_line_count(app, target).min(i32::MAX as usize) as i32;
+        let max_line = line_count.saturating_sub(1);
+        let target_top = first_visible_editor_line(app, target).min(max_line);
+        set_caret_to_line(app, target, target_top, column);
+    }
+
     ensure_gutter_sync(app);
     invalidate_gutter(app);
+}
+
+fn compare_sync_target(app: &AppData, scrolled_edit: Hwnd) -> Option<Hwnd> {
+    if scrolled_edit == app.edit {
+        Some(app.compare_edit).filter(|target| !target.is_null())
+    } else if scrolled_edit == app.compare_edit {
+        Some(app.edit).filter(|target| !target.is_null())
+    } else {
+        None
+    }
 }
 
 fn ensure_gutter_sync(app: &mut AppData) {

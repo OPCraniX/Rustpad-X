@@ -247,7 +247,8 @@ pub fn run() -> io::Result<()> {
             continue;
         }
 
-        let handled = if accelerators.is_null() {
+        let bypass_accelerator = should_bypass_accelerator_for_compare_page_key(&message);
+        let handled = if bypass_accelerator || accelerators.is_null() {
             0
         } else {
             unsafe { TranslateAcceleratorW(hwnd, accelerators, &mut message) }

@@ -17,8 +17,8 @@ Rustpad-X is a native Windows text/code editor written in Rust with a low-level 
 - Click a gutter line number to copy that line of code.
 - Word wrap is enabled by default and persists with the session.
 - Line numbers, code folding, zoom, font selection, fullscreen mode, and light/dark themes.
-- Side-by-side tab comparison with optional synchronized Page Up/Page Down scrolling.
-- Compare Page Up/Page Down sync is persisted with the session.
+- Side-by-side tab comparison with optional synchronized Page Up/Page Down and Ctrl+Page Up/Page Down navigation.
+- Compare page navigation sync is persisted with the session.
 - Font and theme formatting fixes so newly visible text keeps the selected font/color while scrolling.
 - Fullscreen layout fixes for a cleaner borderless editor view.
 - Startup CPU affinity reset to allow all available CPU cores.

@@ -427,7 +427,7 @@ fn create_main_menu() -> io::Result<MainMenus> {
         view_menu,
         MF_STRING,
         ID_VIEW_SYNC_COMPARE_PAGING as usize,
-        "Sync PgUp/PgDn in Compare (Persistent)\tCtrl+Alt+Y",
+        "Sync PgUp/PgDn + Ctrl in Compare (Persistent)\tCtrl+Alt+Y",
     )?;
     append_menu(
         view_menu,
